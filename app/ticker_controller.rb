@@ -1,64 +1,87 @@
-
 class TickerController < UIViewController
+  
+  @@url = "http://market.huobi.com/staticmarket/ticker_btc_json.js"
   @@tick = nil
   
   def initTicker
-    # request
-    @@url = "http://market.huobi.com/staticmarket/ticker_btc_json.js"
-    url = NSURL.URLWithString @@url
-    request = NSURLRequest.requestWithURL url
+    request_prepare
     
-    # connection
-    queue = NSOperationQueue.alloc.init
-    NSURLConnection.sendAsynchronousRequest(
-      request,  
-      queue: queue,  
-      completionHandler: lambda do |response, data, error|    
-        if data.length > 0 && error.nil?
-    
-          str = NSString.alloc.initWithData data, encoding: NSUTF8StringEncoding
-          # puts str
-          obj = JSONParser.parse_from_string str            
-          @@tick =  obj
-         
-         
-           puts obj["ticker"]
-           puts @@tick["ticker"]
-          
-          
-          rect = CGRectMake(150, 120, 100.0, 43.0)
-          label = UILabel.alloc.initWithFrame rect
-          label.text = "Ticker:"
-          
-          
-          rect = CGRectMake(150, 150, 100.0, 43.0)
-          labelPrice = UILabel.alloc.initWithFrame rect
-          amount = @@tick["ticker"]["last"]
-          labelPrice.text = "#{amount} CNY"
-          
-          self.view.addSubview label
-          self.view.addSubview labelPrice
-          # 
+    draw_basic_elements
 
-          SystemSounds.play_system_sound "tin.mp3"
-          
-         
-          # elsif( data.length == 0 && error.nil? )      
-          #   p "Nothing was downloaded"    
-        elsif(!error.nil?)      
-          p "Error: #{error}"    
-        end  
-      end
-    )
-    
-    # drawing
-    self.view.backgroundColor = UIColor.whiteColor
+    update_price
     
     self
   end
   
-  def viewDidLoad
-
+  def update_price
+    # connection
+    queue = NSOperationQueue.alloc.init
+    NSURLConnection.sendAsynchronousRequest(
+      @request,  
+      queue: queue,  
+      completionHandler: update_price_handler
+    )
     
+    true
   end
+  
+  def request_prepare
+    url = NSURL.URLWithString @@url
+    @request = NSURLRequest.requestWithURL url
+  end
+  
+  def draw_basic_elements
+    @pos_x = 100
+    @pos_y = 150
+    @line_height = 30
+
+    rect = CGRectMake(@pos_x, @pos_y, 250, 43.0)
+    @spinner = UILabel.alloc.initWithFrame rect
+    @spinner.text = "loading prices..."
+    self.view.addSubview @spinner
+
+    rect = CGRectMake(@pos_x, @pos_y+@line_height, 250, 43)
+    label = UILabel.alloc.initWithFrame rect
+    label.text = "Current price:"
+    
+    self.view.backgroundColor = UIColor.whiteColor
+    
+    true
+  end
+  
+  def update_price_handler
+    lambda do |response, data, error|    
+      if data.length > 0 && error.nil?
+        update_price_handler_request
+      elsif(!error.nil?)      
+        p "Error: #{error}"    
+      end  
+    end
+  end
+  
+  def update_price_handler_request
+    str = NSString.alloc.initWithData data, encoding: NSUTF8StringEncoding
+    obj = JSONParser.parse_from_string str            
+    @@tick =  obj
+    
+    rect = CGRectMake(@pos_x, @pos_y+@line_height*2, 250, 43)
+    labelPrice = UILabel.alloc.initWithFrame rect
+    amount = @@tick["ticker"]["last"]
+    labelPrice.text = "#{amount} CNY"
+    
+    self.view.addSubview label
+    self.view.addSubview labelPrice
+
+    @spinner.hidden = true
+    
+    SystemSounds.play_system_sound "tin.mp3"
+  end
+  
+  # def spinner_hide
+  #   # [UIView beginAnimations:nil context:NULL];
+  #   # [UIView setAnimationDuration:0.5];
+  #   # [myImageView setAlpha:0];
+  #   # [UIView commitAnimations];
+  # end
+  
 end
